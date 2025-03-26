@@ -12,6 +12,10 @@ def _cart_id(request):
     return cart
 
 def add_cart(request, product_id):
+    #get value of size
+    size = request.GET['size']
+    return HttpResponse(size)
+    exit()
     #get product
     product = Product.objects.get(id=product_id)
 

@@ -55,9 +55,9 @@
 
                 <!-- Search Form -->
                 <div class="col-lg-4 col-md-6 order-3 order-lg-2 mt-2 mt-md-0">
-                    <form action="#" class="search">
+                    <form action="{% url 'search' %}" class="search" method="GET">
                         <div class="input-group">
-                            <input type="text" class="form-control" placeholder="Search">
+                            <input type="text" class="form-control" placeholder="Search" name="keyword">
                             <div class="input-group-append">
                                 <button class="btn btn-primary" type="submit">
                                     <i class="fa fa-search"></i>
