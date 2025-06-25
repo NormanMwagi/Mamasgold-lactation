@@ -70,7 +70,7 @@
                 <!-- User/Cart Section -->
                 <div class="col-lg-3 col-md-4 col-12 order-2 order-lg-3">
                     <div class="d-flex justify-content-end align-items-center">
-                        {% if user.id is not None %}
+                        {% if user.id is None %}
                         <div class="widget-header mr-3">
                             <small class="title text-muted">Welcome guest!</small>
                             <div>
