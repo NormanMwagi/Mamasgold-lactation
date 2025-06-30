@@ -19,6 +19,7 @@
         <div class="row">
             <aside class="col-lg-9">
                 <div class="card">
+
                     <table class="table table-borderless table-shopping-cart">
                         <thead class="text-muted">
                             <tr class="small text-uppercase">
@@ -38,7 +39,6 @@
                                         <figcaption class="info">
                                             <a href="{{ cart_item.product.get_url }}" class="title text-dark">
                                                 {{cart_item.product.product_name}}</a>
-                                            <p class="text-muted small">Color: 25 Mpx <br> Size: Canon</p>
                                         </figcaption>
                                     </figure>
                                 </td>
@@ -97,7 +97,7 @@
                         <p class="text-center mb-3">
                             <img src="{% static './images/misc/mpesa.jpeg' %}" height="34">
                         </p>
-                        <a href="./place-order.html" class="btn btn-primary btn-block"> Checkout </a>
+                        <a href="{% url 'checkout' %}" class="btn btn-primary btn-block"> Checkout </a>
                         <a href="{% url 'store' %}" class="btn btn-light btn-block">Continue Shopping</a>
                     </div> <!-- card-body.// -->
                 </div> <!-- card.// -->

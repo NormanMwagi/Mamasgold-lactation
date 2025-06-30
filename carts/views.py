@@ -1,8 +1,7 @@
 from django.shortcuts import render, redirect, get_object_or_404
 from store.models import Product
 from .models import Cart, CartItem
-from django.http import HttpResponse
-
+from django.contrib.auth.decorators import login_required
 # Create your views here.
 
 def _cart_id(request):
@@ -90,3 +89,30 @@ def cart(request, total=0, quantity=0, cart_item=None):
     }
 
     return render(request, 'store/cart.html', context)
+
+@login_required(login_url='login')
+def checkout( request, total=0, quantity=0, cart_item=None):
+    try:
+        cart = Cart.objects.get(cart_id=_cart_id(request))
+        cart_items = CartItem.objects.filter(cart=cart, is_active=True)
+        if not cart_items:
+            return redirect('cart')
+        #loop through all cart items
+        for cart_item in cart_items:
+            total += (cart_item.product.price * cart_item.quantity)
+            quantity += cart_item.quantity
+        delivery_fee = 300
+        grand_total = delivery_fee + total
+    except Cart.DoesNotExist:
+        cart_items = []  # Assign an empty list
+        delivery_fee = 300
+        grand_total = delivery_fee
+
+    context = {
+        'total': total,
+        'quantity': quantity,
+        'cart_items': cart_items,
+        'delivery_fee': delivery_fee,
+        'grand_total': grand_total
+    }
+    return render(request, 'store/checkout.html', context)
