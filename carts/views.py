@@ -267,6 +267,10 @@ def initiate_mpesa_stk_push(phone_number, amount, order_number, callback_url):
 
     except requests.exceptions.RequestException as e:
         print(f"STK Push error: {e}")
+        # Print detailed error information
+        if hasattr(e, 'response') and e.response:
+            print(f"Response status: {e.response.status_code}")
+            print(f"Response content: {e.response.text}")
         return {
             'success': False,
             'message': 'Failed to initiate payment'
@@ -274,26 +278,22 @@ def initiate_mpesa_stk_push(phone_number, amount, order_number, callback_url):
 
 @login_required(login_url='login')
 def process_payment(request):
-    """Process M-Pesa payment"""
     if request.method == 'POST':
         order_number = request.session.get('order_number')
         if not order_number:
             return JsonResponse({'success': False, 'message': 'Order not found in session'})
-
+        
         try:
             order = Order.objects.get(order_number=order_number, user=request.user)
         except Order.DoesNotExist:
             return JsonResponse({'success': False, 'message': 'Order not found'})
-
+        
         phone_number = request.POST.get('phone_number')
         if not phone_number or len(phone_number) < 10:
-            return JsonResponse({
-                'success': False,
-                'message': 'Please enter a valid phone number'
-            })
-
+            return JsonResponse({'success': False, 'message': 'Please enter a valid phone number'})
+        
         callback_url = request.build_absolute_uri(reverse('mpesa_callback'))
-
+        
         try:
             payment_response = initiate_mpesa_stk_push(
                 phone_number,
@@ -301,17 +301,28 @@ def process_payment(request):
                 order.order_number,
                 callback_url
             )
-
+            
             if payment_response['success']:
                 response_data = payment_response['data']
+                
+                # Create Transaction record
+                transaction = Transaction.objects.create(
+                    order=order,
+                    checkout_request_id=response_data.get('CheckoutRequestID'),
+                    amount=order.grand_total,
+                    phone_number=phone_number,
+                    status='pending'
+                )
+                
                 request.session['payment_data'] = {
                     'checkout_request_id': response_data.get('CheckoutRequestID'),
                     'merchant_request_id': response_data.get('MerchantRequestID'),
                     'phone_number': phone_number,
                     'amount': float(order.grand_total),
-                    'order_number': order.order_number
+                    'order_number': order.order_number,
+                    'transaction_id': transaction.id  # Store transaction ID
                 }
-
+                
                 return JsonResponse({
                     'success': True,
                     'message': 'Payment request sent successfully',
@@ -323,14 +334,11 @@ def process_payment(request):
                     'success': False,
                     'message': payment_response.get('message', 'Payment initiation failed')
                 })
-
+                
         except Exception as e:
             print(f"Payment processing error: {e}")
-            return JsonResponse({
-                'success': False,
-                'message': 'Payment processing error. Please try again.'
-            })
-
+            return JsonResponse({'success': False, 'message': 'Payment processing error. Please try again.'})
+    
     return JsonResponse({'success': False, 'message': 'Invalid request method'})
 
 @login_required(login_url='login')
@@ -357,159 +365,169 @@ def payment_confirmation(request, order_number):
 
 @csrf_exempt
 def mpesa_callback(request):
-    """Handle M-Pesa payment callbacks"""
     if request.method == 'POST':
         try:
             callback_data = json.loads(request.body)
             stk_callback = callback_data.get('Body', {}).get('stkCallback', {})
             result_code = stk_callback.get('ResultCode')
-            checkout_request_id = stk_callback.get('CheckoutRequestID')            
-            # Initialize payment results in session
-            if 'payment_results' not in request.session:
-                request.session['payment_results'] = {}
+            checkout_request_id = stk_callback.get('CheckoutRequestID')
             
-            # Store payment result
-            request.session['payment_results'][checkout_request_id] = {
-                'result_code': result_code,
-                'timestamp': datetime.now().isoformat(),
-                'raw_data': json.dumps(callback_data)  # Store for debugging
-            }
-            request.session.modified = True
+            # Update Transaction status
+            try:
+                transaction = Transaction.objects.get(checkout_request_id=checkout_request_id)
+                if result_code == 0:
+                    transaction.status = 'success'
+                    # Extract receipt details from callback
+                    callback_metadata = stk_callback.get('CallbackMetadata', {}).get('Item', [])
+                    for item in callback_metadata:
+                        if item.get('Name') == 'MpesaReceiptNumber':
+                            transaction.mpesa_receipt_number = item.get('Value')
+                        elif item.get('Name') == 'TransactionDate':
+                            transaction.transaction_date = datetime.strptime(
+                                str(item.get('Value')), '%Y%m%d%H%M%S'
+                            )
+                    transaction.save()
+                else:
+                    transaction.status = 'failed'
+                    transaction.save()
+            except Transaction.DoesNotExist:
+                pass
             
-            return JsonResponse({
-                'ResultCode': 0,
-                'ResultDesc': 'Success'
-            })
-            
+            return JsonResponse({'ResultCode': 0, 'ResultDesc': 'Success'})
+        
         except Exception as e:
-            return JsonResponse({
-                'ResultCode': 1,
-                'ResultDesc': f'Error: {str(e)}'
-            })
+            return JsonResponse({'ResultCode': 1, 'ResultDesc': f'Error: {str(e)}'})
     
-    return JsonResponse({
-        'ResultCode': 1,
-        'ResultDesc': 'Invalid request method'
-    })
+    return JsonResponse({'ResultCode': 1, 'ResultDesc': 'Invalid request method'})
 
 def check_payment_status(request):
     """Check actual payment status via AJAX"""
-    if request.method == 'GET':
-        checkout_request_id = request.GET.get('checkout_request_id')
+    if request.method != 'GET':
+        return JsonResponse({
+            'success': False,
+            'message': 'Invalid request method'
+        })
 
-        if not checkout_request_id:
-            return JsonResponse({
-                'success': False,
-                'message': 'No checkout request ID provided'
-            })
-
-        try:
-            # Query M-Pesa API for payment status
-            access_token = generate_access_token()
-            if not access_token:
-                return JsonResponse({
-                    'success': False,
-                    'message': 'Failed to get access token'
-                })
-
-            headers = {"Authorization": f"Bearer {access_token}"}
-            timestamp = datetime.now().strftime('%Y%m%d%H%M%S')
-            password = base64.b64encode(
-                f"{MPESA_SHORTCODE}{MPESA_PASSKEY}{timestamp}".encode()
-            ).decode()
-
-            payload = {
-                "BusinessShortCode": MPESA_SHORTCODE,
-                "Password": password,
-                "Timestamp": timestamp,
-                "CheckoutRequestID": checkout_request_id
-            }
-
-            try:
-                response = requests.post(
-                    f"{MPESA_BASE_URL}/mpesa/stkpushquery/v1/query",
-                    json=payload,
-                    headers=headers,
-                    timeout=15
-                )
-                response.raise_for_status()
-                response_data = response.json()
-            except requests.exceptions.RequestException as e:
-                return JsonResponse({
-                    'success': False,
-                    'message': f'M-Pesa API error: {str(e)}'
-                })
-            except json.JSONDecodeError:
-                return JsonResponse({
-                    'success': False,
-                    'message': 'Invalid response from M-Pesa'
-                })
-
-            if 'ResultCode' not in response_data:
-                return JsonResponse({
-                    'success': False,
-                    'message': f'Unexpected response: {response_data}'
-                })
-
-            result_code = response_data.get('ResultCode')
-            if result_code == '0':
-                return JsonResponse({
-                    'success': True,
-                    'status': 'success',
-                    'message': 'Payment confirmed'
-                })
-            elif response_data.get('errorMessage') == "The transaction is being processed":
-                return JsonResponse({
-                    'success': True,
-                    'status': 'pending',
-                    'message': 'Payment is still processing'
-                })
-            else:
-                return JsonResponse({
-                    'success': True,
-                    'status': 'failed',
-                    'message': response_data.get('ResultDesc', 'Payment failed')
-                })
-
-        except Exception as e:
-            return JsonResponse({
-                'success': False,
-                'message': f'Error checking payment status: {str(e)}'
-            })
-
-    return JsonResponse({
-        'success': False,
-        'message': 'Invalid request method'
-    })
-def payment_success(request, order_number):
-    """Payment successful page"""
-
-    payment_data = request.session.get('payment_data', {})
-    checkout_request_id = payment_data.get('checkout_request_id')
-
+    checkout_request_id = request.GET.get('checkout_request_id')
     if not checkout_request_id:
-        messages.error(request, 'Invalid payment session')
-        return redirect('home')
+        return JsonResponse({
+            'success': False,
+            'message': 'No checkout request ID provided'
+        })
 
-    payment_verified = False
     try:
-        # Check if payment results exist in session
-        payment_results = request.session.get('payment_results', {})
-        if checkout_request_id in payment_results:
-            if payment_results[checkout_request_id].get('result_code') == 0:
-                payment_verified = True
+        transaction = Transaction.objects.get(checkout_request_id=checkout_request_id)
+
+        if transaction.status == 'success':
+            return JsonResponse({
+                'success': True,
+                'status': 'success',
+                'message': 'Payment confirmed',
+                'mpesa_receipt': transaction.mpesa_receipt_number
+            })
+
+        elif transaction.status == 'failed':
+            return JsonResponse({
+                'success': True,
+                'status': 'failed',
+                'message': 'Payment failed'
+            })
+
+    except Transaction.DoesNotExist:
+        pass  # Will proceed to query M-Pesa API
+
+    try:
+        access_token = generate_access_token()
+        if not access_token:
+            return JsonResponse({
+                'success': False,
+                'message': 'Failed to get access token'
+            })
+
+        headers = {"Authorization": f"Bearer {access_token}"}
+        timestamp = datetime.now().strftime('%Y%m%d%H%M%S')
+        password = base64.b64encode(
+            f"{MPESA_SHORTCODE}{MPESA_PASSKEY}{timestamp}".encode()
+        ).decode()
+
+        payload = {
+            "BusinessShortCode": MPESA_SHORTCODE,
+            "Password": password,
+            "Timestamp": timestamp,
+            "CheckoutRequestID": checkout_request_id
+        }
+
+        response = requests.post(
+            f"{MPESA_BASE_URL}/mpesa/stkpushquery/v1/query",
+            json=payload,
+            headers=headers,
+            timeout=15
+        )
+        response.raise_for_status()
+        response_data = response.json()
+
+        if 'ResultCode' not in response_data:
+            return JsonResponse({
+                'success': False,
+                'message': f'Unexpected response: {response_data}'
+            })
+
+        result_code = response_data.get('ResultCode')
+        if result_code == '0':
+            return JsonResponse({
+                'success': True,
+                'status': 'success',
+                'message': 'Payment confirmed'
+            })
+
+        elif response_data.get('errorMessage') == "The transaction is being processed":
+            return JsonResponse({
+                'success': True,
+                'status': 'pending',
+                'message': 'Payment is still processing'
+            })
+
+        else:
+            return JsonResponse({
+                'success': True,
+                'status': 'failed',
+                'message': response_data.get('ResultDesc', 'Payment failed')
+            })
+
+    except requests.exceptions.RequestException as e:
+        return JsonResponse({
+            'success': False,
+            'message': f'M-Pesa API error: {str(e)}'
+        })
+
+    except json.JSONDecodeError:
+        return JsonResponse({
+            'success': False,
+            'message': 'Invalid response from M-Pesa'
+        })
+
     except Exception as e:
-        print(f"Payment verification failed: {e}")
+        return JsonResponse({
+            'success': False,
+            'message': f'Error checking payment status: {str(e)}'
+        })
 
-    if not payment_verified:
-        messages.warning(request, 'Payment not confirmed yet')
-        return redirect('payment_confirmation', order_number=order_number)
-
-    # Clear relevant session data
-    for key in ['order_number', 'payment_data', 'payment_results']:
-        request.session.pop(key, None)
-
-    return render(request, 'store/payment_success.html', {'order_number': order_number})
+@login_required(login_url='login')
+def payment_success(request, order_number):
+    try:
+        order = Order.objects.get(order_number=order_number, user=request.user)
+        
+        # Clear session data
+        keys = ['order_number', 'payment_data', 'payment_results']
+        [request.session.pop(key, None) for key in keys]
+        
+        return render(request, 'store/payment_success.html', {
+            'order': order
+        })
+        
+    except Order.DoesNotExist:
+        messages.error(request, "Order not found.")
+        return redirect('checkout')
 
 def payment_failed(request):
     """Payment failed page"""

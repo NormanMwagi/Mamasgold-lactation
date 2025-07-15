@@ -1,0 +1,43 @@
+{% extends 'base.html' %}
+{% load static %}
+
+{% block content %}
+<div class="container my-5">
+    <div class="row justify-content-center">
+        <div class="col-lg-8 text-center">
+            <div class="mb-4">
+                <i class="fas fa-check-circle text-success" style="font-size: 5rem;"></i>
+            </div>
+
+            <h1 class="mb-3">Payment Successful!</h1>
+            <p class="lead mb-4">
+                Thank you for your order <strong>#{{ order.order_number }}</strong>.
+                Your payment has been confirmed.
+            </p>
+
+            <div class="card shadow-sm mb-4">
+                <div class="card-body">
+                    <h5 class="card-title">Order Summary</h5>
+                    <p class="mb-1"><strong>Total Amount:</strong> KSh {{ order.grand_total }}</p>
+                    <p class="mb-1"><strong>Delivery Address:</strong> {{ order.address }}, {{ order.city }}</p>
+                    <p class="mb-0"><strong>Contact:</strong> {{ order.phone }}</p>
+                </div>
+            </div>
+
+            <p class="text-muted mb-4">
+                We've sent an order confirmation to your email.
+                You'll receive shipping updates shortly.
+            </p>
+
+            <div class="d-grid gap-2 d-md-flex justify-content-md-center">
+                <a href="{% url 'index' %}" class="btn btn-primary btn-lg px-4 me-md-2">
+                    <i class="fas fa-home me-2"></i>Continue Shopping
+                </a>
+                <a href="#" class="btn btn-outline-secondary btn-lg px-4">
+                    <i class="fas fa-history me-2"></i>View Order History
+                </a>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}

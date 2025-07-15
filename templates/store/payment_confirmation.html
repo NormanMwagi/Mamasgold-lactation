@@ -2,41 +2,154 @@
 {% load static %}
 
 {% block content %}
+<div class="container my-5">
+    <div class="row justify-content-center">
+        <div class="col-lg-8">
+            <div class="card shadow-sm">
+                <div class="card-header bg-info text-white">
+                    <h4 class="mb-0">
+                        <i class="fas fa-receipt me-2"></i>
+                        Payment Confirmation
+                    </h4>
+                </div>
 
-<section class="section-content padding-y bg">
-    <div class="container">
-        <div class="row">
-            <div class="col-md-8 mx-auto">
-                <div class="card">
-                    <div class="card-header">
-                        <h4 class="card-title">Payment Confirmation</h4>
-                    </div>
-                    <div class="card-body">
-                        <p>Thank you for your order! Please complete the payment to finalize your purchase.</p>
-                        <p><strong>Order Number:</strong> {{ order.order_number }}</p>
-                        <p><strong>Total Amount:</strong> Ksh {{ grand_total }}</p>
-                        <hr>
-                        <h5>Instructions:</h5>
-                        <p>Please send the total amount to our M-Pesa number and enter the transaction code below to
-                            confirm your payment.</p>
-                        <p><strong>M-Pesa Paybill:</strong> XXXXXX</p>
-                        <p><strong>Account Number:</strong> {{ order.order_number }}</p>
-                        <form action="{% url 'process_payment' %}" method="post"> {# Removed order.order_number #}
-                            {% csrf_token %}
-                            <div class="form-group">
-                                <input type="hidden" name="order_number" value="{{ order.order_number }}"> {# Hidden
-                                input field #}
-                                <label for="transaction_code">M-Pesa Transaction Code</label>
-                                <input type="text" name="transaction_code" class="form-control" id="transaction_code"
-                                    required>
+                <div class="card-body">
+                    <div class="alert alert-info">
+                        <h5 class="alert-heading">
+                            <i class="fas fa-info-circle me-2"></i>
+                            Payment Status
+                        </h5>
+                        <div id="payment-status">
+                            <div class="d-flex align-items-center">
+                                <div class="spinner-border text-primary me-3" role="status">
+                                    <span class="visually-hidden">Loading...</span>
+                                </div>
+                                <h5 class="mb-0">Confirming your payment...</h5>
                             </div>
-                            <button type="submit" class="btn btn-primary btn-block">Confirm Payment</button>
-                        </form>
+                        </div>
+                    </div>
+
+                    <div class="row">
+                        <div class="col-md-6">
+                            <h5 class="border-bottom pb-2">Order Details</h5>
+                            <p class="mb-1"><strong>Order Number:</strong> {{ order.order_number }}</p>
+                            <p class="mb-1"><strong>Customer:</strong> {{ order.first_name }} {{ order.last_name }}</p>
+                            <p class="mb-1"><strong>Total Amount:</strong> KSh {{ order.grand_total }}</p>
+                            <p class="mb-1"><strong>Date:</strong> {{ order.created_at|date:"M d, Y H:i" }}</p>
+                        </div>
+
+                        <div class="col-md-6">
+                            <h5 class="border-bottom pb-2">Payment Details</h5>
+                            <p class="mb-1"><strong>Transaction ID:</strong> <span id="tx-id">N/A</span></p>
+                            <p class="mb-1"><strong>Phone Number:</strong> <span id="tx-phone">{{
+                                    payment_data.phone_number }}</span></p>
+                            <p class="mb-1"><strong>Amount Paid:</strong> <span id="tx-amount">KSh {{
+                                    payment_data.amount }}</span></p>
+                            <p class="mb-1"><strong>Payment Method:</strong> M-Pesa</p>
+                        </div>
+                    </div>
+
+                    <div class="mt-4">
+                        <h5 class="border-bottom pb-2">Next Steps</h5>
+                        <p>Your order will be processed once payment is confirmed. You'll receive:</p>
+                        <ul>
+                            <li>Order confirmation email</li>
+                            <li>M-Pesa payment receipt via SMS</li>
+                            <li>Delivery updates via SMS/Email</li>
+                        </ul>
+                    </div>
+
+                    <div class="d-grid gap-2 mt-4">
+                        <a href="{% url 'home' %}" class="btn btn-outline-primary">
+                            <i class="fas fa-home me-2"></i>Continue Shopping
+                        </a>
                     </div>
                 </div>
             </div>
         </div>
     </div>
-</section>
+</div>
+{% endblock %}
 
+{% block extra_js %}
+<script>
+    document.addEventListener('DOMContentLoaded', function ()
+    {
+        const checkoutRequestId = "{{ payment_data.checkout_request_id }}";
+        const transactionId = "{{ payment_data.transaction_id }}";
+        const orderNumber = "{{ order.order_number }}";
+        const statusContainer = document.getElementById('payment-status');
+
+        let attempts = 0;
+        const maxAttempts = 20; // 20 attempts (approx 2 minutes)
+
+        function checkPaymentStatus()
+        {
+            fetch(`{% url 'check_payment_status' %}?checkout_request_id=${checkoutRequestId}`)
+                .then(response => response.json())
+                .then(data =>
+                {
+                    if (data.success)
+                    {
+                        if (data.status === 'success')
+                        {
+                            statusContainer.innerHTML = `
+                            <div class="text-success">
+                                <h5><i class="fas fa-check-circle me-2"></i> Payment Confirmed!</h5>
+                                <p class="mb-0">Your payment was successful. Order is being processed.</p>
+                            </div>
+                        `;
+
+                            // Update transaction details
+                            document.getElementById('tx-id').textContent = data.mpesa_receipt || 'N/A';
+
+                            // Redirect to success page after delay
+                            setTimeout(() =>
+                            {
+                                window.location.href = "{% url 'payment_success' order.order_number %}";
+                            }, 3000);
+                            return;
+
+                        } else if (data.status === 'failed')
+                        {
+                            statusContainer.innerHTML = `
+                            <div class="text-danger">
+                                <h5><i class="fas fa-times-circle me-2"></i> Payment Failed</h5>
+                                <p class="mb-0">${data.message}</p>
+                            </div>
+                        `;
+                            return;
+                        }
+                    }
+
+                    // Continue polling if pending
+                    attempts++;
+                    if (attempts < maxAttempts)
+                    {
+                        setTimeout(checkPaymentStatus, 6000); // Check every 6 seconds
+                    } else
+                    {
+                        statusContainer.innerHTML = `
+                        <div class="text-warning">
+                            <h5><i class="fas fa-exclamation-triangle me-2"></i> Status Unknown</h5>
+                            <p class="mb-0">Please check your M-Pesa transactions or contact support.</p>
+                        </div>
+                    `;
+                    }
+                })
+                .catch(error =>
+                {
+                    console.error('Error checking payment status:', error);
+                    attempts++;
+                    if (attempts < maxAttempts)
+                    {
+                        setTimeout(checkPaymentStatus, 6000);
+                    }
+                });
+        }
+
+        // Start polling
+        setTimeout(checkPaymentStatus, 5000); // First check after 5 seconds
+    });
+</script>
 {% endblock %}
