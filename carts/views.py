@@ -1,6 +1,7 @@
 from django.shortcuts import render, redirect, get_object_or_404
 from store.models import Product
-from .models import Cart, CartItem, PaymentStatus
+from .models import Cart, CartItem, PaymentStatus, Transaction
+from orders.models import Order, OrderItem
 from django.contrib.auth.decorators import login_required
 from django.contrib import messages
 from django.views.decorators.csrf import csrf_exempt
@@ -9,6 +10,7 @@ from django.urls import reverse
 import json, os, uuid, requests, base64
 from datetime import datetime
 from dotenv import load_dotenv 
+
 
 
 load_dotenv()
@@ -26,21 +28,19 @@ def _cart_id(request):
     return cart
 
 def add_cart(request, product_id):
-    #get product
     product = Product.objects.get(id=product_id)
 
     try:
-        cart = Cart.objects.get(cart_id=_cart_id(request)) # get the cart using the present cart_id
+        cart = Cart.objects.get(cart_id=_cart_id(request))
     except Cart.DoesNotExist:
         cart = Cart.objects.create(
             cart_id = _cart_id(request)
         )
     cart.save()
 
-    #cart items
     try:
         cart_item = CartItem.objects.get(product=product, cart=cart)
-        cart_item.quantity += 1 #increment quantity
+        cart_item.quantity += 1 
         cart_item.save()
     except CartItem.DoesNotExist:
         cart_item = CartItem.objects.create(
@@ -64,33 +64,30 @@ def remove_cart(request, product_id):
         else:
             cart_item.delete()
     except (Cart.DoesNotExist, CartItem.DoesNotExist):
-        pass # Handle cases where the cart or item does not exist
+        pass 
     return redirect('cart')
 
 def remove_cart_item(request, product_id):
     product = Product.objects.get(id=product_id)
-
     try:
         cart = Cart.objects.get(cart_id = _cart_id(request))
         cart_item = CartItem.objects.get(product=product, cart = cart)
         cart_item.delete()
     except (Cart.DoesNotExist, CartItem.DoesNotExist):
         pass
-
     return redirect('cart')
 
 def cart(request, total=0, quantity=0, cart_item=None):
     try:
         cart = Cart.objects.get(cart_id=_cart_id(request))
         cart_items = CartItem.objects.filter(cart=cart, is_active=True)
-        #loop through all cart items
         for cart_item in cart_items:
             total += (cart_item.product.price * cart_item.quantity)
             quantity += cart_item.quantity
         delivery_fee = 0
         grand_total = delivery_fee + total
     except Cart.DoesNotExist:
-        cart_items = []  # Assign an empty list
+        cart_items = []  
         delivery_fee = 0
         grand_total = delivery_fee
 
@@ -111,14 +108,13 @@ def checkout( request, total=0, quantity=0, cart_item=None):
         cart_items = CartItem.objects.filter(cart=cart, is_active=True)
         if not cart_items:
             return redirect('cart')
-        #loop through all cart items
         for cart_item in cart_items:
             total += (cart_item.product.price * cart_item.quantity)
             quantity += cart_item.quantity
         delivery_fee = 300
         grand_total = delivery_fee + total
     except Cart.DoesNotExist:
-        cart_items = []  # Assign an empty list
+        cart_items = [] 
         delivery_fee = 0
         grand_total = delivery_fee
 
@@ -148,44 +144,66 @@ def process_checkout(request):
             if not cart_items:
                 messages.error(request, 'Your cart is empty')
                 return redirect('cart')
-                
+
             total = sum(item.product.price * item.quantity for item in cart_items)
             delivery_fee = 0
             grand_total = total + delivery_fee
-            
+
         except Cart.DoesNotExist:
             messages.error(request, 'Cart not found')
             return redirect('cart')
+
+        # Create Order
         order_number = f"ORD-{uuid.uuid4().hex[:8].upper()}"
-        
-        # Store order details in session for payment processing
-        request.session['order_data'] = {
-            'order_number': order_number,
-            'first_name': first_name,
-            'last_name': last_name,
-            'email': email,
-            'phone': phone,
-            'address': address,
-            'city': city,
-            'additional_info': additional_info,
-            'total': float(total),
-            'delivery_fee': float(delivery_fee),
-            'grand_total': float(grand_total),
-        }
-        
+        order = Order.objects.create(
+            user=request.user,
+            order_number=order_number,
+            first_name=first_name,
+            last_name=last_name,
+            email=email,
+            phone=phone,
+            address=address,
+            city=city,
+            additional_info=additional_info,
+            total=total,
+            delivery_fee=delivery_fee,
+            grand_total=grand_total,
+        )
+
+        # Create Order Items
+        for item in cart_items:
+            OrderItem.objects.create(
+                order=order,
+                product=item.product,
+                quantity=item.quantity,
+                price=item.product.price,
+            )
+
+        # Clear the cart
+        cart_items.delete()
+
+        # Store order number in session for payment processing
+        request.session['order_number'] = order.order_number
+
         return redirect('payment_page')
-    
+
     return redirect('checkout')
 @login_required(login_url='login')
 def payment_page(request):
     """Display M-Pesa payment page"""
-    order_data = request.session.get('order_data')
-    if not order_data:
+    order_number = request.session.get('order_number')
+    if not order_number:
         messages.error(request, 'No order data found. Please checkout again.')
         return redirect('checkout')
-    
+
+    try:
+        order = Order.objects.get(order_number=order_number, user=request.user)
+    except Order.DoesNotExist:
+        messages.error(request, "Order does not exist.")
+        return redirect('checkout')
+
     context = {
-        'order_data': order_data,
+        'order': order,
     }
     return render(request, 'store/payment.html', context)
 def generate_access_token():
@@ -254,84 +272,85 @@ def initiate_mpesa_stk_push(phone_number, amount, order_number, callback_url):
             'message': 'Failed to initiate payment'
         }
 
-
 @login_required(login_url='login')
 def process_payment(request):
     """Process M-Pesa payment"""
     if request.method == 'POST':
-        order_data = request.session.get('order_data')
-        if not order_data:
-            return JsonResponse({
-                'success': False, 
-                'message': 'Order data not found'
-            })
-        
+        order_number = request.session.get('order_number')
+        if not order_number:
+            return JsonResponse({'success': False, 'message': 'Order not found in session'})
+
+        try:
+            order = Order.objects.get(order_number=order_number, user=request.user)
+        except Order.DoesNotExist:
+            return JsonResponse({'success': False, 'message': 'Order not found'})
+
         phone_number = request.POST.get('phone_number')
-        
-        # Validate phone number
         if not phone_number or len(phone_number) < 10:
             return JsonResponse({
-                'success': False, 
+                'success': False,
                 'message': 'Please enter a valid phone number'
             })
-        
-        # Build callback URL
+
         callback_url = request.build_absolute_uri(reverse('mpesa_callback'))
-        
+
         try:
-            # Initiate M-Pesa STK Push
             payment_response = initiate_mpesa_stk_push(
-                phone_number, 
-                order_data['grand_total'],
-                order_data['order_number'],
+                phone_number,
+                order.grand_total,
+                order.order_number,
                 callback_url
             )
-            
+
             if payment_response['success']:
                 response_data = payment_response['data']
-                
-                # Store payment details in session
                 request.session['payment_data'] = {
                     'checkout_request_id': response_data.get('CheckoutRequestID'),
                     'merchant_request_id': response_data.get('MerchantRequestID'),
                     'phone_number': phone_number,
-                    'amount': order_data['grand_total'],
-                    'order_number': order_data['order_number']
+                    'amount': float(order.grand_total),
+                    'order_number': order.order_number
                 }
-                
+
                 return JsonResponse({
                     'success': True,
                     'message': 'Payment request sent successfully',
                     'checkout_request_id': response_data.get('CheckoutRequestID'),
-                    'redirect_url': reverse('payment_confirmation')
+                    'redirect_url': reverse('payment_confirmation', args=[order.order_number])
                 })
             else:
                 return JsonResponse({
                     'success': False,
                     'message': payment_response.get('message', 'Payment initiation failed')
                 })
-                
+
         except Exception as e:
             print(f"Payment processing error: {e}")
             return JsonResponse({
                 'success': False,
                 'message': 'Payment processing error. Please try again.'
             })
-    
+
     return JsonResponse({'success': False, 'message': 'Invalid request method'})
 
 @login_required(login_url='login')
-def payment_confirmation(request):
+def payment_confirmation(request, order_number):
     """Show payment confirmation page"""
-    order_data = request.session.get('order_data')
+    # Get order_number from URL parameter instead of session
     payment_data = request.session.get('payment_data')
     
-    if not order_data or not payment_data:
+    if not order_number or not payment_data:
         messages.error(request, 'Payment session expired. Please try again.')
         return redirect('checkout')
     
+    try:
+        order = Order.objects.get(order_number=order_number, user=request.user)
+    except Order.DoesNotExist:
+        messages.error(request, "Order not found.")
+        return redirect('checkout')
+    
     context = {
-        'order_data': order_data,
+        'order': order,
         'payment_data': payment_data,
     }
     return render(request, 'store/payment_confirmation.html', context)
@@ -344,8 +363,7 @@ def mpesa_callback(request):
             callback_data = json.loads(request.body)
             stk_callback = callback_data.get('Body', {}).get('stkCallback', {})
             result_code = stk_callback.get('ResultCode')
-            checkout_request_id = stk_callback.get('CheckoutRequestID')
-            
+            checkout_request_id = stk_callback.get('CheckoutRequestID')            
             # Initialize payment results in session
             if 'payment_results' not in request.session:
                 request.session['payment_results'] = {}
@@ -378,13 +396,13 @@ def check_payment_status(request):
     """Check actual payment status via AJAX"""
     if request.method == 'GET':
         checkout_request_id = request.GET.get('checkout_request_id')
-        
+
         if not checkout_request_id:
             return JsonResponse({
                 'success': False,
                 'message': 'No checkout request ID provided'
             })
-        
+
         try:
             # Query M-Pesa API for payment status
             access_token = generate_access_token()
@@ -393,21 +411,20 @@ def check_payment_status(request):
                     'success': False,
                     'message': 'Failed to get access token'
                 })
-                
+
             headers = {"Authorization": f"Bearer {access_token}"}
             timestamp = datetime.now().strftime('%Y%m%d%H%M%S')
             password = base64.b64encode(
                 f"{MPESA_SHORTCODE}{MPESA_PASSKEY}{timestamp}".encode()
             ).decode()
-            
+
             payload = {
                 "BusinessShortCode": MPESA_SHORTCODE,
                 "Password": password,
                 "Timestamp": timestamp,
                 "CheckoutRequestID": checkout_request_id
             }
-            
-            # Add timeout and better error handling
+
             try:
                 response = requests.post(
                     f"{MPESA_BASE_URL}/mpesa/stkpushquery/v1/query",
@@ -427,15 +444,13 @@ def check_payment_status(request):
                     'success': False,
                     'message': 'Invalid response from M-Pesa'
                 })
-            
-            # Check if we got a valid response
+
             if 'ResultCode' not in response_data:
                 return JsonResponse({
                     'success': False,
                     'message': f'Unexpected response: {response_data}'
                 })
-            
-            # Interpret response
+
             result_code = response_data.get('ResultCode')
             if result_code == '0':
                 return JsonResponse({
@@ -443,52 +458,59 @@ def check_payment_status(request):
                     'status': 'success',
                     'message': 'Payment confirmed'
                 })
+            elif response_data.get('errorMessage') == "The transaction is being processed":
+                return JsonResponse({
+                    'success': True,
+                    'status': 'pending',
+                    'message': 'Payment is still processing'
+                })
             else:
-                # Payment failed
                 return JsonResponse({
                     'success': True,
                     'status': 'failed',
                     'message': response_data.get('ResultDesc', 'Payment failed')
                 })
-                
+
         except Exception as e:
             return JsonResponse({
                 'success': False,
                 'message': f'Error checking payment status: {str(e)}'
             })
-    
+
     return JsonResponse({
         'success': False,
         'message': 'Invalid request method'
     })
-def payment_success(request):
+def payment_success(request, order_number):
     """Payment successful page"""
+
     payment_data = request.session.get('payment_data', {})
     checkout_request_id = payment_data.get('checkout_request_id')
-    
+
     if not checkout_request_id:
         messages.error(request, 'Invalid payment session')
         return redirect('home')
-    
-    # Verify payment through database or session
+
     payment_verified = False
-    if 'payment_results' in request.session:
-        payment_results = request.session['payment_results']
+    try:
+        # Check if payment results exist in session
+        payment_results = request.session.get('payment_results', {})
         if checkout_request_id in payment_results:
-            if payment_results[checkout_request_id]['result_code'] == 0:
+            if payment_results[checkout_request_id].get('result_code') == 0:
                 payment_verified = True
-    
+    except Exception as e:
+        print(f"Payment verification failed: {e}")
+
     if not payment_verified:
         messages.warning(request, 'Payment not confirmed yet')
-        return redirect('payment_confirmation')
-    
-    # Clear session data
-    keys_to_delete = ['order_data', 'payment_data', 'payment_results']
-    for key in keys_to_delete:
-        if key in request.session:
-            del request.session[key]
-    
-    return render(request, 'store/payment_success.html')
+        return redirect('payment_confirmation', order_number=order_number)
+
+    # Clear relevant session data
+    for key in ['order_number', 'payment_data', 'payment_results']:
+        request.session.pop(key, None)
+
+    return render(request, 'store/payment_success.html', {'order_number': order_number})
+
 def payment_failed(request):
     """Payment failed page"""
     checkout_request_id = request.session.get('payment_data', {}).get('checkout_request_id')

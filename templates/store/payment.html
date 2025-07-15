@@ -13,20 +13,20 @@
                 <div class="card-body">
                     <div class="row">
                         <div class="col-md-6">
-                            <h6>Order Number: <span class="text-primary">{{ order_data.order_number }}</span></h6>
-                            <p class="mb-1"><strong>{{ order_data.first_name }} {{ order_data.last_name }}</strong></p>
-                            <p class="mb-1">{{ order_data.email }}</p>
-                            <p class="mb-1">{{ order_data.phone }}</p>
-                            <p class="mb-0">{{ order_data.address }}, {{ order_data.city }}</p>
-                            {% if order_data.additional_info %}
-                            <p class="mb-0"><small class="text-muted">Note: {{ order_data.additional_info }}</small></p>
+                            <h6>Order Number: <span class="text-primary">{{ order.order_number }}</span></h6>
+                            <p class="mb-1"><strong>{{ order.first_name }} {{ order.last_name }}</strong></p>
+                            <p class="mb-1">{{ order.email }}</p>
+                            <p class="mb-1">{{ order.phone }}</p>
+                            <p class="mb-0">{{ order.address }}, {{ order.city }}</p>
+                            {% if order.additional_info %}
+                            <p class="mb-0"><small class="text-muted">Note: {{ order.additional_info }}</small></p>
                             {% endif %}
                         </div>
                         <div class="col-md-6 text-md-end">
-                            <p class="mb-1">Subtotal: <span class="fw-bold">KSh {{ order_data.total }}</span></p>
-                            <p class="mb-1">Delivery: <span class="fw-bold">KSh {{ order_data.delivery_fee }}</span></p>
+                            <p class="mb-1">Subtotal: <span class="fw-bold">KSh {{ order.total }}</span></p>
+                            <p class="mb-1">Delivery: <span class="fw-bold">KSh {{ order.delivery_fee }}</span></p>
                             <hr class="my-2">
-                            <h5 class="text-success">Total: KSh {{ order_data.grand_total }}</h5>
+                            <h5 class="text-success">Total: KSh {{ order.grand_total }}</h5>
                         </div>
                     </div>
                 </div>
@@ -36,7 +36,7 @@
             <div class="card shadow-sm">
                 <div class="card-header bg-success text-white">
                     <h4 class="mb-0">
-                        <img src="{% static 'images/mpesa-logo.png' %}" alt="M-Pesa" style="height: 35px;" class="me-2">
+                        <img src="{% static 'images/mpesa-logo.jpg' %}" alt="M-Pesa" style="height: 35px;" class="me-2">
                         M-Pesa Payment
                     </h4>
                 </div>
@@ -61,7 +61,7 @@
                                         <i class="fas fa-mobile-alt"></i> M-Pesa Phone Number *
                                     </label>
                                     <input type="tel" class="form-control form-control-lg" id="mpesa_phone"
-                                        name="phone_number" value="{{ order_data.phone }}" required>
+                                        name="phone_number" value="{{ order.phone }}" required>
                                     <small class="form-text text-muted">
                                         Enter the phone number registered with M-Pesa
                                     </small>
@@ -70,7 +70,7 @@
                                 <div class="d-grid gap-2 mt-4">
                                     <button type="submit" id="pay-now-btn" class="btn btn-success btn-lg">
                                         <span id="pay-btn-text">
-                                            <i class="fas fa-lock"></i> Pay KSh {{ order_data.grand_total }} Now
+                                            <i class="fas fa-lock"></i> Pay KSh {{ order.grand_total }} Now
                                         </span>
                                         <span id="pay-loading" class="d-none">
                                             <span class="spinner-border spinner-border-sm" role="status"></span>
@@ -121,7 +121,7 @@
                     Check your phone for the M-Pesa prompt and enter your PIN to complete the payment.
                 </p>
                 <div class="alert alert-warning" role="alert">
-                    <strong>Amount to Pay:</strong> KSh {{ order_data.grand_total }}
+                    <strong>Amount to Pay:</strong> KSh {{ order.grand_total }}
                 </div>
                 <small class="text-muted">
                     <i class="fas fa-clock"></i> This may take up to 2 minutes
@@ -146,8 +146,8 @@
                 </div>
                 <h4 class="text-success mb-3">Payment Successful!</h4>
                 <p class="mb-3">Your order has been confirmed and will be processed shortly.</p>
-                <div class="d-grid">
-                    <a href="{% url 'payment_success' %}" class="btn btn-success btn-lg">
+                <div class="d-grid"> <!-- Pass the order_number as an argument -->
+                    <a href="{% url 'payment_success' order.order_number %}" class="btn btn-success btn-lg">
                         View Order Details
                     </a>
                 </div>

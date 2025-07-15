@@ -1,0 +1,42 @@
+{% extends 'base.html' %}
+{% load static %}
+
+{% block content %}
+
+<section class="section-content padding-y bg">
+    <div class="container">
+        <div class="row">
+            <div class="col-md-8 mx-auto">
+                <div class="card">
+                    <div class="card-header">
+                        <h4 class="card-title">Payment Confirmation</h4>
+                    </div>
+                    <div class="card-body">
+                        <p>Thank you for your order! Please complete the payment to finalize your purchase.</p>
+                        <p><strong>Order Number:</strong> {{ order.order_number }}</p>
+                        <p><strong>Total Amount:</strong> Ksh {{ grand_total }}</p>
+                        <hr>
+                        <h5>Instructions:</h5>
+                        <p>Please send the total amount to our M-Pesa number and enter the transaction code below to
+                            confirm your payment.</p>
+                        <p><strong>M-Pesa Paybill:</strong> XXXXXX</p>
+                        <p><strong>Account Number:</strong> {{ order.order_number }}</p>
+                        <form action="{% url 'process_payment' %}" method="post"> {# Removed order.order_number #}
+                            {% csrf_token %}
+                            <div class="form-group">
+                                <input type="hidden" name="order_number" value="{{ order.order_number }}"> {# Hidden
+                                input field #}
+                                <label for="transaction_code">M-Pesa Transaction Code</label>
+                                <input type="text" name="transaction_code" class="form-control" id="transaction_code"
+                                    required>
+                            </div>
+                            <button type="submit" class="btn btn-primary btn-block">Confirm Payment</button>
+                        </form>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</section>
+
+{% endblock %}
