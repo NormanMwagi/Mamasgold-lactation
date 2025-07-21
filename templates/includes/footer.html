@@ -1,24 +1,316 @@
 {% load static %}
 
 <!-- ========================= FOOTER ========================= -->
-<footer class="section-footer border-top">
-    <div class="container">
-        <section class="footer-bottom border-top row">
-            <div class="col-md-2">
-                <p class="text-muted"> &copy 2025 Mamasgold </p>
+<footer class="section-footer bg-dark text-light">
+    <!-- Main Footer Content -->
+    <div class="container py-5">
+        <div class="row gy-4">
+            <!-- Company Info -->
+            <div class="col-lg-3 col-md-6">
+                <div class="footer-brand mb-4">
+                    <img class="logo mb-3" src="{% static 'images/logo.jpeg' %}" alt="Mama's Gold Logo"
+                        style="height: 60px; width: auto; filter: brightness(1.2);">
+                    <h5 class="text-white mb-3">Mama's Gold</h5>
+                    <p class="text-muted mb-3">Your trusted partner for quality products and exceptional service.
+                        Serving customers across Kenya with pride.</p>
+
+                    <!-- Social Media Links -->
+                    <div class="social-links">
+                        <h6 class="text-white mb-2">Follow Us</h6>
+                        <a href="#" class="btn btn-outline-light btn-sm me-2 mb-2" aria-label="Facebook">
+                            <i class="fab fa-facebook-f"></i>
+                        </a>
+                        <a href="#" class="btn btn-outline-light btn-sm me-2 mb-2" aria-label="Twitter">
+                            <i class="fab fa-twitter"></i>
+                        </a>
+                        <a href="#" class="btn btn-outline-light btn-sm me-2 mb-2" aria-label="Instagram">
+                            <i class="fab fa-instagram"></i>
+                        </a>
+                        <a href="#" class="btn btn-outline-light btn-sm me-2 mb-2" aria-label="WhatsApp">
+                            <i class="fab fa-whatsapp"></i>
+                        </a>
+                    </div>
+                </div>
             </div>
-            <div class="col-md-8 text-md-center">
-                <span class="px-2">+254706675902</span>
-                <span class="px-2">Nairobi CBD, Biashara street, Zanna exhibition G12</span>
-                <br>
-                <span class="px-2">Mombasa, Taita street, Greenland Plaza F404</span>
+
+            <!-- Quick Links -->
+            <div class="col-lg-2 col-md-6">
+                <h6 class="text-white mb-3">Quick Links</h6>
+                <ul class="list-unstyled footer-links">
+                    <li class="mb-2">
+                        <a href="{% url 'index' %}" class="text-muted text-decoration-none hover-link">
+                            <i class="fa fa-angle-right me-2"></i>Home
+                        </a>
+                    </li>
+                    <li class="mb-2">
+                        <a href="{% url 'store' %}" class="text-muted text-decoration-none hover-link">
+                            <i class="fa fa-angle-right me-2"></i>Store
+                        </a>
+                    </li>
+                    <li class="mb-2">
+                        <a href="#" class="text-muted text-decoration-none hover-link">
+                            <i class="fa fa-angle-right me-2"></i>About Us
+                        </a>
+                    </li>
+                    <li class="mb-2">
+                        <a href="#" class="text-muted text-decoration-none hover-link">
+                            <i class="fa fa-angle-right me-2"></i>Contact
+                        </a>
+                    </li>
+                    <li class="mb-2">
+                        <a href="#" class="text-muted text-decoration-none hover-link">
+                            <i class="fa fa-angle-right me-2"></i>Blog
+                        </a>
+                    </li>
+                </ul>
             </div>
-            <div class="col-md-2 text-md-right text-muted">
-                <i class="fab fa-lg fa-cc-visa"></i>
-                <i class="fab fa-lg fa-cc-paypal"></i>
-                <i class="fab fa-lg fa-cc-mastercard"></i>
+
+            <!-- Categories -->
+            <div class="col-lg-2 col-md-6">
+                <h6 class="text-white mb-3">Categories</h6>
+                <ul class="list-unstyled footer-links">
+                    {% for category in links|slice:":5" %}
+                    <li class="mb-2">
+                        <a href="{{ category.get_url }}" class="text-muted text-decoration-none hover-link">
+                            <i class="fa fa-angle-right me-2"></i>{{ category.category_name }}
+                        </a>
+                    </li>
+                    {% empty %}
+                    <li class="mb-2">
+                        <a href="#" class="text-muted text-decoration-none hover-link">
+                            <i class="fa fa-angle-right me-2"></i>Electronics
+                        </a>
+                    </li>
+                    <li class="mb-2">
+                        <a href="#" class="text-muted text-decoration-none hover-link">
+                            <i class="fa fa-angle-right me-2"></i>Fashion
+                        </a>
+                    </li>
+                    <li class="mb-2">
+                        <a href="#" class="text-muted text-decoration-none hover-link">
+                            <i class="fa fa-angle-right me-2"></i>Home & Garden
+                        </a>
+                    </li>
+                    {% endfor %}
+                </ul>
             </div>
-        </section>
-    </div><!-- //container -->
+
+            <!-- Customer Service -->
+            <div class="col-lg-2 col-md-6">
+                <h6 class="text-white mb-3">Customer Service</h6>
+                <ul class="list-unstyled footer-links">
+                    <li class="mb-2">
+                        <a href="#" class="text-muted text-decoration-none hover-link">
+                            <i class="fa fa-angle-right me-2"></i>Help Center
+                        </a>
+                    </li>
+                    <li class="mb-2">
+                        <a href="#" class="text-muted text-decoration-none hover-link">
+                            <i class="fa fa-angle-right me-2"></i>Track Order
+                        </a>
+                    </li>
+                    <li class="mb-2">
+                        <a href="#" class="text-muted text-decoration-none hover-link">
+                            <i class="fa fa-angle-right me-2"></i>Returns
+                        </a>
+                    </li>
+                    <li class="mb-2">
+                        <a href="#" class="text-muted text-decoration-none hover-link">
+                            <i class="fa fa-angle-right me-2"></i>Shipping Info
+                        </a>
+                    </li>
+                    <li class="mb-2">
+                        <a href="#" class="text-muted text-decoration-none hover-link">
+                            <i class="fa fa-angle-right me-2"></i>Privacy Policy
+                        </a>
+                    </li>
+                </ul>
+            </div>
+
+            <!-- Contact Info -->
+            <div class="col-lg-3 col-md-6">
+                <h6 class="text-white mb-3">Contact Information</h6>
+
+                <!-- Phone -->
+                <div class="contact-item d-flex align-items-start mb-3">
+                    <div class="contact-icon me-3">
+                        <i class="fa fa-phone text-primary"></i>
+                    </div>
+                    <div>
+                        <small class="text-muted d-block">Call Us</small>
+                        <a href="tel:+254706675902" class="text-light text-decoration-none hover-link">
+                            +254 706 675 902
+                        </a>
+                    </div>
+                </div>
+
+                <!-- Email -->
+                <div class="contact-item d-flex align-items-start mb-3">
+                    <div class="contact-icon me-3">
+                        <i class="fa fa-envelope text-primary"></i>
+                    </div>
+                    <div>
+                        <small class="text-muted d-block">Email Us</small>
+                        <a href="mailto:info@mamasgold.com" class="text-light text-decoration-none hover-link">
+                            info@mamasgold.com
+                        </a>
+                    </div>
+                </div>
+
+                <!-- Locations -->
+                <div class="contact-item d-flex align-items-start mb-3">
+                    <div class="contact-icon me-3">
+                        <i class="fa fa-map-marker-alt text-primary"></i>
+                    </div>
+                    <div>
+                        <small class="text-muted d-block">Our Locations</small>
+                        <address class="text-light mb-2" style="font-style: normal; line-height: 1.4;">
+                            <strong>Nairobi:</strong><br>
+                            Biashara Street, Zanna Exhibition G12<br>
+                            Nairobi CBD
+                        </address>
+                        <address class="text-light" style="font-style: normal; line-height: 1.4;">
+                            <strong>Mombasa:</strong><br>
+                            Taita Street, Greenland Plaza F404
+                        </address>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Footer Bottom -->
+    <div class="footer-bottom bg-secondary">
+        <div class="container py-3">
+            <div class="row align-items-center gy-2">
+                <div class="col-lg-6 col-md-7">
+                    <p class="text-muted mb-0 small">
+                        &copy; 2025 Mama's Gold. All rights reserved.
+                        <span class="d-none d-sm-inline">Made with <i class="fa fa-heart text-danger"></i> in
+                            Kenya</span>
+                    </p>
+                </div>
+                <div class="col-lg-3 col-md-5">
+                    <div class="text-muted small">
+                        <a href="#" class="text-muted text-decoration-none me-3 hover-link">Terms</a>
+                        <a href="#" class="text-muted text-decoration-none hover-link">Privacy</a>
+                    </div>
+                </div>
+                <div class="col-lg-3 text-lg-end">
+                    <div class="payment-methods">
+                        <small class="text-muted d-block mb-1">We Accept:</small>
+                        <i class="fab fa-cc-visa fa-lg text-primary me-2" title="Visa"></i>
+                        <i class="fab fa-cc-mastercard fa-lg text-warning me-2" title="Mastercard"></i>
+                        <i class="fab fa-cc-paypal fa-lg text-info me-2" title="PayPal"></i>
+                        <i class="fa fa-mobile-alt fa-lg text-success" title="M-Pesa"></i>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
 </footer>
+
+<!-- Custom Footer Styles -->
+<style>
+    .section-footer {
+        margin-top: auto;
+    }
+
+    .footer-links .hover-link {
+        transition: all 0.3s ease;
+    }
+
+    .footer-links .hover-link:hover {
+        color: #007bff !important;
+        transform: translateX(5px);
+    }
+
+    .social-links .btn {
+        width: 40px;
+        height: 40px;
+        border-radius: 50%;
+        display: inline-flex;
+        align-items: center;
+        justify-content: center;
+        transition: all 0.3s ease;
+    }
+
+    .social-links .btn:hover {
+        background-color: #007bff;
+        border-color: #007bff;
+        transform: translateY(-2px);
+    }
+
+    .contact-icon {
+        width: 40px;
+        height: 40px;
+        background-color: rgba(0, 123, 255, 0.1);
+        border-radius: 50%;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        flex-shrink: 0;
+    }
+
+    .newsletter-form .input-group {
+        box-shadow: 0 2px 10px rgba(0, 0, 0, 0.1);
+        border-radius: 25px;
+        overflow: hidden;
+    }
+
+    .newsletter-form .form-control {
+        border: none;
+        padding: 12px 20px;
+    }
+
+    .newsletter-form .form-control:focus {
+        box-shadow: none;
+    }
+
+    .newsletter-form .btn {
+        border: none;
+        padding: 12px 20px;
+        font-weight: 500;
+    }
+
+    .payment-methods i {
+        transition: transform 0.2s ease;
+    }
+
+    .payment-methods i:hover {
+        transform: scale(1.2);
+    }
+
+    @media (max-width: 768px) {
+        .footer-bottom .row>div {
+            text-align: center !important;
+        }
+
+        .payment-methods {
+            margin-top: 1rem;
+        }
+
+        .contact-item {
+            margin-bottom: 1.5rem !important;
+        }
+    }
+
+    /* Bootstrap 5 utility classes for compatibility */
+    .me-1 {
+        margin-right: 0.25rem !important;
+    }
+
+    .me-2 {
+        margin-right: 0.5rem !important;
+    }
+
+    .me-3 {
+        margin-right: 1rem !important;
+    }
+
+    .text-decoration-none {
+        text-decoration: none !important;
+    }
+</style>
+
 <!-- ========================= FOOTER END // ========================= -->

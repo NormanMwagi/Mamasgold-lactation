@@ -37,8 +37,8 @@
                 </div>
 
                 <!-- Category Dropdown & Store Button -->
-                <div class="col-lg-3 col-md-4 col-6 order-1">
-                    <div class="d-flex align-items-center">
+                <div class="col-lg-3 col-md-4 col-12 order-1 order-lg-1 category-col">
+                    <div class="d-flex align-items-center justify-content-start">
                         <div class="category-wrap dropdown mr-2">
                             <button type="button" class="btn btn-primary dropdown-toggle" data-toggle="dropdown">
                                 <i class="fa fa-bars"></i> All categories
@@ -54,7 +54,7 @@
                 </div>
 
                 <!-- Search Form -->
-                <div class="col-lg-4 col-md-6 order-3 order-lg-2 mt-2 mt-md-0">
+                <div class="col-lg-4 col-md-6 col-12 order-3 order-lg-2 mt-2 mt-lg-0">
                     <form action="{% url 'search' %}" class="search" method="GET">
                         <div class="input-group">
                             <input type="text" class="form-control" placeholder="Search" name="keyword">

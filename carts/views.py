@@ -387,6 +387,9 @@ def mpesa_callback(request):
                                 str(item.get('Value')), '%Y%m%d%H%M%S'
                             )
                     transaction.save()
+                    order = transaction.order
+                    order.payment_status = 'paid'
+                    order.save()
                 else:
                     transaction.status = 'failed'
                     transaction.save()

@@ -23,6 +23,7 @@
 }
 @media all and (max-width: 768px) {
   /* mobile devices */
+  
   .mobile-block {
     display: block;
   }
@@ -78,6 +79,20 @@
 
   .navbar-expand .navbar-collapse {
     flex-direction: column;
+  }
+
+  /* Mobile header layout fix */
+  .header-main .category-col {
+    margin-bottom: 15px;
+  }
+
+  .header-main .category-col .d-flex {
+    justify-content: flex-start !important;
+  }
+
+  /* Ensure full width for category section on mobile */
+  .category-col {
+    width: 100%;
   }
 }
 
