@@ -8,8 +8,24 @@
     <meta http-equiv="pragma" content="no-cache" />
     <meta http-equiv="cache-control" content="max-age=604800" />
     <meta name="viewport" content="width=device-width, initial-scale=1, shrink-to-fit=no">
+    <title>{% block title %}Mamasgold | The best lactation products{% endblock %}</title>
+    <meta name="description" content="{% block meta_description %}Discover our premium lactation teas, supplements & snacks crafted to support healthy milk supply and boost confidence for new moms.{% endblock %}">
+    <meta name="keywords" content="lactation products, lactation tea, lactation supplements, breastfeeding support, milk supply, new moms, Mamasgold"/>
+    <link rel="canonical" href="{{ request.build_absolute_uri }}">
 
-    <title>Mamasgold | The best lactation products</title>
+    <!-- Open Graph / Facebook -->
+    <meta property="og:type" content="website">
+    <meta property="og:url" content="{{ request.build_absolute_uri }}">
+    <meta property="og:title" content="{% block og_title %}Mamasgold | The best lactation products{% endblock %}">
+    <meta property="og:description" content="{% block og_description %}Discover our premium lactation teas, supplements & snacks crafted to support healthy milk supply and boost confidence for new moms.{% endblock %}">
+    <meta property="og:image" content="{% static 'images/logo.png' %}">
+
+    <!-- Twitter -->
+    <meta property="twitter:card" content="summary_large_image">
+    <meta property="twitter:url" content="{{ request.build_absolute_uri }}">
+    <meta property="twitter:title" content="{% block twitter_title %}Mamasgold | The best lactation products{% endblock %}">
+    <meta property="twitter:description" content="{% block twitter_description %}Discover our premium lactation teas, supplements & snacks crafted to support healthy milk supply and boost confidence for new moms.{% endblock %}">
+    <meta property="twitter:image" content="{% static 'images/logo.png' %}">
 
     <link href="{% static 'images/logo.jpeg' %}" rel="shortcut icon" type="image/x-icon">
 

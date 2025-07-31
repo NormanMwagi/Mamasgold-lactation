@@ -84,7 +84,7 @@ def cart(request, total=0, quantity=0, cart_item=None):
         for cart_item in cart_items:
             total += (cart_item.product.price * cart_item.quantity)
             quantity += cart_item.quantity
-        delivery_fee = 0
+        delivery_fee = 0 # You can set a fixed delivery fee or calculate based on distance
         grand_total = delivery_fee + total
     except Cart.DoesNotExist:
         cart_items = []  
@@ -111,7 +111,7 @@ def checkout( request, total=0, quantity=0, cart_item=None):
         for cart_item in cart_items:
             total += (cart_item.product.price * cart_item.quantity)
             quantity += cart_item.quantity
-        delivery_fee = 300
+        delivery_fee = 0 # You can set a fixed delivery fee or calculate based on distance
         grand_total = delivery_fee + total
     except Cart.DoesNotExist:
         cart_items = [] 
@@ -146,7 +146,7 @@ def process_checkout(request):
                 return redirect('cart')
 
             total = sum(item.product.price * item.quantity for item in cart_items)
-            delivery_fee = 0
+            delivery_fee = 0 # You can set a fixed delivery fee or calculate based on distance
             grand_total = total + delivery_fee
 
         except Cart.DoesNotExist:
@@ -169,7 +169,6 @@ def process_checkout(request):
             delivery_fee=delivery_fee,
             grand_total=grand_total,
         )
-
         # Create Order Items
         for item in cart_items:
             OrderItem.objects.create(
@@ -178,10 +177,8 @@ def process_checkout(request):
                 quantity=item.quantity,
                 price=item.product.price,
             )
-
         # Clear the cart
         cart_items.delete()
-
         # Store order number in session for payment processing
         request.session['order_number'] = order.order_number
 
