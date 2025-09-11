@@ -5,11 +5,13 @@ from orders.models import Order, OrderItem
 from django.contrib.auth.decorators import login_required
 from django.contrib import messages
 from django.views.decorators.csrf import csrf_exempt
-from django.http import JsonResponse
+from django.http import JsonResponse, HttpResponseBadRequest
 from django.urls import reverse
 import json, os, uuid, requests, base64
 from datetime import datetime
 from dotenv import load_dotenv 
+from .services import get_cart, add_product_to_cart, remove_product_from_cart, calculate_cart_totals
+from orders.services import create_order
 
 
 
@@ -20,171 +22,51 @@ MPESA_PASSKEY = os.getenv('MPESA_PASSKEY')
 MPESA_SHORTCODE = os.getenv('MPESA_SHORTCODE')
 MPESA_BASE_URL = os.getenv('MPESA_BASE_URL')
 CALLBACK_URL = os.getenv('CALLBACK_URL')
+
 def _cart_id(request):
-    
-    cart = request.session.session_key
-    if not cart:
-        cart = request.session.create()
-    return cart
-
+    if not request.session.session_key:
+        request.session.create()
+    return request.session.session_key
 def add_cart(request, product_id):
-    product = Product.objects.get(id=product_id)
-
-    try:
-        cart = Cart.objects.get(cart_id=_cart_id(request))
-    except Cart.DoesNotExist:
-        cart = Cart.objects.create(
-            cart_id = _cart_id(request)
-        )
-    cart.save()
-
-    try:
-        cart_item = CartItem.objects.get(product=product, cart=cart)
-        cart_item.quantity += 1 
-        cart_item.save()
-    except CartItem.DoesNotExist:
-        cart_item = CartItem.objects.create(
-            product = product,
-            quantity = 1,
-            cart = cart,
-        )
-        cart_item.save()
+    add_product_to_cart(request, product_id)
     return redirect("cart")
 
 def remove_cart(request, product_id):
-    product = Product.objects.get(id=product_id)
-
-    try:
-        cart = Cart.objects.get(cart_id=_cart_id(request))
-        cart_item = CartItem.objects.get(product=product, cart=cart)
-        if cart_item.quantity > 1:
-            cart_item.quantity -= 1
-            cart_item.save()
-        
-        else:
-            cart_item.delete()
-    except (Cart.DoesNotExist, CartItem.DoesNotExist):
-        pass 
-    return redirect('cart')
+    remove_product_from_cart(request, product_id, remove_all=False)
+    return redirect("cart")
 
 def remove_cart_item(request, product_id):
-    product = Product.objects.get(id=product_id)
-    try:
-        cart = Cart.objects.get(cart_id = _cart_id(request))
-        cart_item = CartItem.objects.get(product=product, cart = cart)
-        cart_item.delete()
-    except (Cart.DoesNotExist, CartItem.DoesNotExist):
-        pass
-    return redirect('cart')
+    remove_product_from_cart(request, product_id, remove_all=True)
+    return redirect("cart")
+def cart(request):
+    cart = get_cart(request)
+    totals = calculate_cart_totals(cart)
+    return render(request, "store/cart.html", totals)
 
-def cart(request, total=0, quantity=0, cart_item=None):
-    try:
-        cart = Cart.objects.get(cart_id=_cart_id(request))
-        cart_items = CartItem.objects.filter(cart=cart, is_active=True)
-        for cart_item in cart_items:
-            total += (cart_item.product.price * cart_item.quantity)
-            quantity += cart_item.quantity
-        delivery_fee = 0 # You can set a fixed delivery fee or calculate based on distance
-        grand_total = delivery_fee + total
-    except Cart.DoesNotExist:
-        cart_items = []  
-        delivery_fee = 0
-        grand_total = delivery_fee
+@login_required
+def checkout(request):
+    cart = get_cart(request)
+    totals = calculate_cart_totals(cart)
+    if not totals["cart_items"]:
+        return redirect("cart")
+    return render(request, "store/checkout.html", totals)
 
-    context = {
-        'total': total,
-        'quantity': quantity,
-        'cart_items': cart_items,
-        'delivery_fee': delivery_fee,
-        'grand_total': grand_total
-    }
-
-    return render(request, 'store/cart.html', context)
-
-@login_required(login_url='login')
-def checkout( request, total=0, quantity=0, cart_item=None):
-    try:
-        cart = Cart.objects.get(cart_id=_cart_id(request))
+@login_required
+def process_checkout(request):
+    if request.method == "POST":
+        cart = get_cart(request)
         cart_items = CartItem.objects.filter(cart=cart, is_active=True)
         if not cart_items:
-            return redirect('cart')
-        for cart_item in cart_items:
-            total += (cart_item.product.price * cart_item.quantity)
-            quantity += cart_item.quantity
-        delivery_fee = 0 # You can set a fixed delivery fee or calculate based on distance
-        grand_total = delivery_fee + total
-    except Cart.DoesNotExist:
-        cart_items = [] 
-        delivery_fee = 0
-        grand_total = delivery_fee
+            messages.error(request, "Your cart is empty")
+            return redirect("cart")
 
-    context = {
-        'total': total,
-        'quantity': quantity,
-        'cart_items': cart_items,
-        'delivery_fee': delivery_fee,
-        'grand_total': grand_total
-    }
-    return render(request, 'store/checkout.html', context)
+        order = create_order(request.user, cart, cart_items, request.POST)
+        cart_items.delete()  # clear cart
+        request.session["order_number"] = order.order_number
+        return redirect("payment_page")
 
-@login_required(login_url='login')
-def process_checkout(request):
-    if request.method == 'POST':
-        first_name = request.POST['first_name']
-        last_name = request.POST['last_name']
-        phone = request.POST['phone']
-        email = request.POST['email']
-        address = request.POST['address']
-        city = request.POST['city']
-        additional_info = request.POST['additional_info']
+    return redirect("checkout")
 
-        try:
-            cart = Cart.objects.get(cart_id=_cart_id(request))
-            cart_items = CartItem.objects.filter(cart=cart, is_active=True)
-            if not cart_items:
-                messages.error(request, 'Your cart is empty')
-                return redirect('cart')
-
-            total = sum(item.product.price * item.quantity for item in cart_items)
-            delivery_fee = 0 # You can set a fixed delivery fee or calculate based on distance
-            grand_total = total + delivery_fee
-
-        except Cart.DoesNotExist:
-            messages.error(request, 'Cart not found')
-            return redirect('cart')
-
-        # Create Order
-        order_number = f"ORD-{uuid.uuid4().hex[:8].upper()}"
-        order = Order.objects.create(
-            user=request.user,
-            order_number=order_number,
-            first_name=first_name,
-            last_name=last_name,
-            email=email,
-            phone=phone,
-            address=address,
-            city=city,
-            additional_info=additional_info,
-            total=total,
-            delivery_fee=delivery_fee,
-            grand_total=grand_total,
-        )
-        # Create Order Items
-        for item in cart_items:
-            OrderItem.objects.create(
-                order=order,
-                product=item.product,
-                quantity=item.quantity,
-                price=item.product.price,
-            )
-        # Clear the cart
-        cart_items.delete()
-        # Store order number in session for payment processing
-        request.session['order_number'] = order.order_number
-
-        return redirect('payment_page')
-
-    return redirect('checkout')
 @login_required(login_url='login')
 def payment_page(request):
     """Display M-Pesa payment page"""
