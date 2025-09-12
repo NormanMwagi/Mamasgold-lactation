@@ -7,11 +7,14 @@ from django.contrib import messages
 from django.views.decorators.csrf import csrf_exempt
 from django.http import JsonResponse, HttpResponseBadRequest
 from django.urls import reverse
-import json, os, uuid, requests, base64
+import json, logging, os, uuid, requests, base64
 from datetime import datetime
 from dotenv import load_dotenv 
 from .services import get_cart, add_product_to_cart, remove_product_from_cart, calculate_cart_totals
 from orders.services import create_order
+
+logging.basicConfig(level=logging.INFO)
+logger = logging.getLogger(__name__)
 
 
 
@@ -85,6 +88,7 @@ def payment_page(request):
         'order': order,
     }
     return render(request, 'store/payment.html', context)
+
 def generate_access_token():
     try:
         credentials = f"{CONSUMER_KEY}:{CONSUMER_SECRET}"
