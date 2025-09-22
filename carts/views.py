@@ -58,3 +58,4 @@ def process_checkout(request):
         return redirect("payment_page")
 
     return redirect("checkout")
+
