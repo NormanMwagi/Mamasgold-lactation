@@ -1,0 +1,23 @@
+<!DOCTYPE html>
+<html>
+
+<head>
+    <meta charset="utf-8">
+    <title>Order Confirmation</title>
+</head>
+
+<body style="font-family: Arial, sans-serif; background: #f9f9f9; padding: 20px;">
+    <div style="max-width: 600px; margin: auto; background: white; padding: 20px; border-radius: 8px;">
+        <h2 style="color: #333;">Hello {{ user.first_name }},</h2>
+        <p>Thank you for your payment! 🎉</p>
+        <p>Your order <strong>#{{ order.order_number }}</strong> has been confirmed and is being processed.</p>
+        <p><strong>Total Paid:</strong> KSh {{ order.grand_total }}</p>
+        <br>
+        <p>You can track your order anytime by logging in to your account.</p>
+        <br>
+        <p>Best regards,</p>
+        <p><strong>Mamas Gold Team</strong></p>
+    </div>
+</body>
+
+</html>
