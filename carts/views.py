@@ -19,28 +19,60 @@ def _cart_id(request):
     if not request.session.session_key:
         request.session.create()
     return request.session.session_key
+def cart(request):
+    # choose items depending on auth
+    if request.user.is_authenticated:
+        totals = calculate_cart_totals(user=request.user)
+    else:
+        cart = get_cart(request)
+        totals = calculate_cart_totals(cart=cart)
+
+    context = {
+        "cart_items": totals["cart_items"],
+        "total": totals["total"],
+        "quantity": totals["quantity"],
+        "delivery_fee": totals["delivery_fee"],
+        "grand_total": totals["grand_total"],
+    }
+    return render(request, "store/cart.html", context)
+
+
 def add_cart(request, product_id):
     add_product_to_cart(request, product_id)
     return redirect("cart")
+
 
 def remove_cart(request, product_id):
     remove_product_from_cart(request, product_id, remove_all=False)
     return redirect("cart")
 
+
 def remove_cart_item(request, product_id):
     remove_product_from_cart(request, product_id, remove_all=True)
     return redirect("cart")
-def cart(request):
-    cart = get_cart(request)
-    totals = calculate_cart_totals(cart)
-    return render(request, "store/cart.html", totals)
+
+
+def clear_cart(request):
+    if request.user.is_authenticated:
+        CartItem.objects.filter(user=request.user).delete()
+    else:
+        cart = get_cart(request)
+        CartItem.objects.filter(cart=cart).delete()
+
+    messages.success(request, "Your cart has been cleared.")
+    return redirect("cart")
 
 @login_required
 def checkout(request):
-    cart = get_cart(request)
-    totals = calculate_cart_totals(cart)
+    if request.user.is_authenticated:
+        totals = calculate_cart_totals(user=request.user)
+    else:
+        cart = get_cart(request)
+        totals = calculate_cart_totals(cart=cart)
+
     if not totals["cart_items"]:
         return redirect("cart")
+
     return render(request, "store/checkout.html", totals)
 
 @login_required

@@ -72,6 +72,16 @@
                                 </td>
                             </tr>
                             {% endfor %}
+                            <!-- clear cart-->
+                            <tr>
+                                <td colspan="4" class="text-right">
+                                    <a href="{% url 'clear_cart' %}" class="btn btn-outline-danger">
+                                        <i class="fa fa-trash"></i> Clear Cart
+                                    </a>
+                                </td>
+                            </tr>
+
+
                         </tbody>
                     </table>
                 </div> <!-- card.// -->
