@@ -38,7 +38,7 @@
                                 <ul class="list-menu">
                                     <li><a href="{% url 'store' %}">All Products</a></li>
                                     {% for category in links %}
-                                    <li><a href="{{ links.get_url }}">{{ category.category_name }} </a></li>
+                                    <li><a href="{{ category.get_url }}">{{ category.category_name }} </a></li>
                                     {% endfor %}
                                 </ul>
 
@@ -55,33 +55,35 @@
                         </header>
                         <div class="filter-content collapse show" id="collapse_3" style="">
                             <div class="card-body">
-
-                                <div class="form-row">
-                                    <div class="form-group col-md-6">
-                                        <label>Min</label>
-                                        <!-- <input class="form-control" placeholder="$0" type="number"> -->
-                                        <select class="mr-2 form-control">
-                                            <option value="0">Ksh 0</option>
-                                            <option value="150">Ksh 1000</option>
-                                            <option value="200">Ksh 2000</option>
-                                            <option value="500">Ksh 5000</option>
-                                            <option value="1000">Ksh 10000</option>
-                                        </select>
-                                    </div>
-                                    <div class="form-group text-right col-md-6">
-                                        <label>Max</label>
-                                        <select class="mr-2 form-control">
-                                            <option value="50">Ksh 500</option>
-                                            <option value="100">Ksh 1000</option>
-                                            <option value="150">Ksh 1500</option>
-                                            <option value="200">Ksh 2000</option>
-                                            <option value="500">Ksh 5000</option>
-                                            <option value="1000">Ksh 10000</option>
-                                            <option value="2000">Ksh 20000+</option>
-                                        </select>
-                                    </div>
-                                </div> <!-- form-row.// -->
-                                <button class="btn btn-block btn-primary">Apply</button>
+                                <form method="get" action="{% url 'store' %}">
+                                    <div class="form-row">
+                                        <div class="form-group col-md-6">
+                                            <label>Min</label>
+                                            <!-- <input class="form-control" placeholder="$0" type="number"> -->
+                                            <select class="mr-2 form-control" name="min_price">
+                                                <option value="">Any</option>
+                                                <option value="0" {% if request.GET.min_price == "0" %}selected{% endif %}>Ksh 0</option>
+                                                <option value="1000" {% if request.GET.min_price == "1000" %}selected{% endif %}>Ksh 1000</option>
+                                                <option value="2000" {% if request.GET.min_price == "2000" %}selected{% endif %}>Ksh 2000</option>
+                                                <option value="5000" {% if request.GET.min_price == "5000" %}selected{% endif %}>Ksh 5000</option>
+                                                <option value="10000" {% if request.GET.min_price == "10000" %}selected{% endif %}>Ksh 10000</option>
+                                            </select>
+                                        </div>
+                                        <div class="form-group text-right col-md-6">
+                                            <label>Max</label>
+                                            <select class="mr-2 form-control">
+                                                <option value="">Any</option>
+                                                <option value="500" {% if request.GET.max_price == "500" %}selected{% endif %}>Ksh 500</option>
+                                                <option value="1000" {% if request.GET.max_price == "1000" %}selected{% endif %}>Ksh 1000</option>
+                                                <option value="2000" {% if request.GET.max_price == "2000" %}selected{% endif %}>Ksh 2000</option>
+                                                <option value="5000" {% if request.GET.max_price == "5000" %}selected{% endif %}>Ksh 5000</option>
+                                                <option value="10000" {% if request.GET.max_price == "10000" %}selected{% endif %}>Ksh 10000</option>
+                                                <option value="20000" {% if request.GET.max_price == "20000" %}selected{% endif %}>Ksh 20000+</option>
+                                            </select>
+                                        </div>
+                                    </div> <!-- form-row.// -->
+                                    <button class="btn btn-block btn-primary">Apply</button>
+                                </form>
                             </div><!-- card-body.// -->
                         </div>
                     </article> <!-- filter-group .// -->
