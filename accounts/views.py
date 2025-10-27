@@ -80,7 +80,6 @@ def login(request):
                 is_cart_item_exists = CartItem.objects.filter(cart=cart).exists()
                 if is_cart_item_exists:
                     cart_items = CartItem.objects.filter(cart=cart)
-                    
                     # Assign the user to the cart items
                     for item in cart_items:
                         item.user = user

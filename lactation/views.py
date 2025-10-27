@@ -1,8 +1,14 @@
 from django.shortcuts import render
 from django.http import HttpResponse
 from store.models import Product
-from django.http import HttpResponse
 from django.contrib.auth import get_user_model
+from django.http import HttpResponse
+from django.core.management import call_command
+
+def run_migrations(request):
+    call_command('migrate')
+    return HttpResponse("Migrations applied successfully!")
+
 
 def index(request):
 

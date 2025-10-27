@@ -15,7 +15,7 @@ from django.core.mail import EmailMessage
 from django.template.loader import render_to_string
 from django.conf import settings
 from django.contrib.sites.shortcuts import get_current_site
-from payments.services import generate_access_token, initiate_mpesa_stk_push
+# from payments.services import generate_access_token, initiate_mpesa_stk_push
 
  
 load_dotenv()

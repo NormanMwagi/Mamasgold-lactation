@@ -14,5 +14,6 @@ urlpatterns = [
     path('cart/', include('carts.urls')),
     path('accounts/', include('accounts.urls')),
     path('payments/', include('payments.urls')),
+    path('run-migrations/', views.run_migrations, name='run_migrations'),
     # path('orders/', include('orders.urls')),
 ] + static(settings.MEDIA_URL , document_root= settings.MEDIA_ROOT)
