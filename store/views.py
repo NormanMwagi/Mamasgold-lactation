@@ -8,38 +8,42 @@ from django.core.paginator import EmptyPage, PageNotAnInteger, Paginator
 from django.db.models import Q
 
 # Create your views here.
-def store(request, category_slug=None):
-    categories = None
+def store(request):
     products = Product.objects.filter(is_available=True)
+    links = Category.objects.all()
 
-    # Category filter
+    # --- 1. Category filter ---
+    category_slug = request.GET.get('category')
     if category_slug:
-        categories = get_object_or_404(Category, slug=category_slug)
-        products = products.filter(category=categories)
+        products = products.filter(category__slug=category_slug)
 
-    # Filter by price range
+    # --- 2. Keyword search ---
+    keyword = request.GET.get('keyword')
+    if keyword:
+        products = products.filter(product_name__icontains=keyword)
+
+    # --- 3. Price range filter ---
     min_price = request.GET.get('min_price')
     max_price = request.GET.get('max_price')
 
-    if min_price:
+    if min_price and max_price:
+        products = products.filter(price__gte=min_price, price__lte=max_price)
+    elif min_price:
         products = products.filter(price__gte=min_price)
-    if max_price:
+    elif max_price:
         products = products.filter(price__lte=max_price)
 
-    # Pagination
-    paginator = Paginator(products.order_by('id'), 6)
+    # --- Pagination ---
+    paginator = Paginator(products, 6)
     page = request.GET.get('page')
-    paged_product = paginator.get_page(page)
-    product_count = products.count()
+    paged_products = paginator.get_page(page)
 
     context = {
-        'products': paged_product,
-        'product_count': product_count,
-        'min_price': min_price,
-        'max_price': max_price,
+        'products': paged_products,
+        'product_count': products.count(),
+        'links': links,
     }
     return render(request, 'store/store.html', context)
-
 
 def product_detail(request, category_slug, product_slug):
     try:

@@ -38,7 +38,7 @@
                                 <ul class="list-menu">
                                     <li><a href="{% url 'store' %}">All Products</a></li>
                                     {% for category in links %}
-                                    <li><a href="{{ category.get_url }}">{{ category.category_name }} </a></li>
+                                    <li><a href="{% url 'store' %}?category={{ category.slug }}{% if request.GET.min_price %}&min_price={{ request.GET.min_price }}{% endif %}{% if request.GET.max_price %}&max_price={{ request.GET.max_price }}{% endif %}{% if request.GET.keyword %}&keyword={{ request.GET.keyword }}{% endif %}">{{ category.category_name }} </a></li>
                                     {% endfor %}
                                 </ul>
 
@@ -56,6 +56,13 @@
                         <div class="filter-content collapse show" id="collapse_3" style="">
                             <div class="card-body">
                                 <form method="get" action="{% url 'store' %}">
+                                      <!-- Preserve category or keyword -->
+                                    {% if request.GET.category %}
+                                    <input type="hidden" name="category" value="{{ request.GET.category }}">
+                                    {% endif %}
+                                    {% if request.GET.keyword %}
+                                    <input type="hidden" name="keyword" value="{{ request.GET.keyword }}">
+                                    {% endif %}
                                     <div class="form-row">
                                         <div class="form-group col-md-6">
                                             <label>Min</label>
